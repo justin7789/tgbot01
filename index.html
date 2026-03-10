@@ -3,79 +3,71 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>匿名牆</title>
+    <title>匿名牆 v3.0</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
         .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .post-id { font-size: 11px; color: #8e8e93; margin-bottom: 4px; }
-        .post-text { font-size: 16px; line-height: 1.5; color: #1c1e21; white-space: pre-wrap; }
-        .reply-area { margin-top: 10px; border-top: 1px solid #f0f2f5; padding-top: 8px; }
-        .reply-item { background: #f8f9fa; padding: 5px 10px; border-radius: 8px; margin-bottom: 5px; font-size: 13px; color: #444; }
-        .reply-btn { background: #0088cc; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; margin-top: 10px; width: 100%; font-weight: bold; }
-        #loading { text-align: center; color: #999; margin-top: 50px; }
+        .post-id { font-size: 11px; color: #8e8e93; }
+        .post-text { font-size: 16px; margin: 10px 0; color: #1c1e21; white-space: pre-wrap; }
+        .reply-item { background: #f8f9fa; padding: 6px 10px; border-radius: 8px; margin-top: 5px; font-size: 13px; }
+        .btn { background: #0088cc; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; width: 100%; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div id="posts-list"></div>
-    <div id="loading">讀取中...</div>
+    <div id="app">正在連線至伺服器...</div>
 
     <script>
-        // ⚠️ 確保這裡是你 ngrok 的最新網址
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // ⚠️ 檢查你的 ngrok 網址
         const API_BASE = 'https://promycelial-fatima-monarchical.ngrok-free.dev';
 
-        async function fetchPosts() {
+        async function load() {
             try {
-                const res = await fetch(`${API_BASE}/api/posts`);
+                const res = await fetch(`${API_BASE}/api/posts?t=${Date.now()}`);
                 const posts = await res.json();
-                const container = document.getElementById('posts-list');
-                const loader = document.getElementById('loading');
+                const container = document.getElementById('app');
                 
                 if (posts.length === 0) {
-                    loader.innerText = "牆上還沒有任何內容";
+                    container.innerText = "牆上還沒有任何內容";
                     return;
                 }
 
-                loader.style.display = 'none';
                 container.innerHTML = posts.slice().reverse().map(p => `
                     <div class="card">
                         <div class="post-id">#${p.id}</div>
                         <div class="post-text">${p.text}</div>
-                        <div class="reply-area">
-                            ${(p.replies || []).map(r => `<div class="reply-item">💬 ${r}</div>`).join('')}
-                        </div>
-                        <button class="reply-btn" onclick="submitReply(${p.id})">回覆此貼文</button>
+                        <div class="replies">${(p.replies || []).map(r => `<div class="reply-item">💬 ${r}</div>`).join('')}</div>
+                        <button class="btn" onclick="reply(${p.id})">回覆此貼文</button>
                     </div>
                 `).join('');
             } catch (err) {
-                document.getElementById('loading').innerText = "連線失敗: " + err.message;
+                document.getElementById('app').innerText = "連線失敗: " + err.message;
             }
         }
 
-        async function submitReply(postId) {
-            // 使用瀏覽器內建 prompt，避開 Telegram Pattern 限制
-            const userMsg = prompt("請輸入您的匿名回覆：");
-            if (!userMsg || userMsg.trim() === "") return;
+        async function reply(postId) {
+            const msg = prompt("請輸入您的匿名回覆：");
+            if (!msg || msg.trim() === "") return;
 
             try {
                 const res = await fetch(`${API_BASE}/api/reply`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ post_id: postId, text: userMsg })
+                    body: JSON.stringify({ post_id: postId, text: msg })
                 });
-                
                 if (res.ok) {
-                    alert("回覆已送出！");
-                    fetchPosts(); // 重新整理
-                } else {
-                    alert("發送失敗，伺服器無回應。");
+                    alert("回覆成功！");
+                    load();
                 }
             } catch (err) {
-                alert("網路錯誤: " + err.message);
+                alert("傳送失敗: " + err.message);
             }
         }
 
-        fetchPosts();
+        load();
     </script>
 </body>
 </html>
