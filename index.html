@@ -3,78 +3,56 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>即時匿名牆</title>
+    <title>匿名牆</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
-        .post-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .post-id { font-size: 11px; color: #8e8e93; margin-bottom: 4px; }
-        .post-content { font-size: 16px; line-height: 1.5; color: #1c1e21; white-space: pre-wrap; }
-        .reply-box { margin-top: 10px; border-top: 1px solid #f0f2f5; padding-top: 8px; font-size: 13px; color: #555; }
-        .reply-item { background: #f8f9fa; padding: 4px 8px; border-radius: 6px; margin-bottom: 4px; }
-        .reply-btn { margin-top: 12px; background: #0088cc; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; font-weight: bold; }
-        #status { text-align: center; color: #999; font-size: 14px; margin-top: 50px; }
+        .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .post-id { font-size: 11px; color: #888; }
+        .post-text { font-size: 16px; margin: 8px 0; }
+        .reply-item { font-size: 13px; color: #555; background: #f8f9fa; padding: 4px 8px; border-radius: 6px; margin-top: 4px; }
+        .btn { background: #0088cc; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <div id="posts-container"></div>
-    <div id="status">正在同步串流資料...</div>
+    <div id="list"></div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        const API_BASE = 'https://promycelial-fatima-monarchical.ngrok-free.dev'; // ⚠️ 檢查網址
 
-        // ⚠️ 務必換成你最新的 ngrok 網址
-        const API_URL = 'https://promycelial-fatima-monarchical.ngrok-free.dev/api/posts';
-
-        async function loadPosts() {
+        async function load() {
             try {
-                const response = await fetch(API_URL);
-                if (!response.ok) throw new Error("連線異常: " + response.status);
-                
-                const posts = await response.json();
-                const container = document.getElementById('posts-container');
-                const status = document.getElementById('status');
-
-                if (posts.length === 0) {
-                    status.innerText = "目前牆上空空如也...";
-                    return;
-                }
-
-                status.style.display = 'none';
-                // 照你的 JSON 欄位渲染 (id, text, replies)
-                container.innerHTML = posts.slice().reverse().map(p => `
-                    <div class="post-card">
+                const res = await fetch(`${API_BASE}/api/posts`);
+                const posts = await res.json();
+                document.getElementById('list').innerHTML = posts.slice().reverse().map(p => `
+                    <div class="card">
                         <div class="post-id">#${p.id}</div>
-                        <div class="post-content">${p.text}</div>
-                        ${p.replies && p.replies.length > 0 ? `
-                            <div class="reply-box">
-                                ${p.replies.map(r => `<div class="reply-item">💬 ${r}</div>`).join('')}
-                            </div>
-                        ` : ''}
-                        <button class="reply-btn" onclick="sendReply(${p.id})">回覆此貼文</button>
+                        <div class="post-text">${p.text}</div>
+                        <div class="replies">${(p.replies || []).map(r => `<div class="reply-item">💬 ${r}</div>`).join('')}</div>
+                        <button class="btn" onclick="doReply(${p.id})">回覆</button>
                     </div>
                 `).join('');
-
-            } catch (err) {
-                document.getElementById('status').innerHTML = 
-                    "❌ 讀取失敗<br><small>請確認 ngrok 視窗是否開啟</small><br><br>" +
-                    "<button onclick='location.reload()'>重試</button>";
-            }
+            } catch (e) { alert("讀取失敗: " + e.message); }
         }
 
-        function sendReply(postId) {
+        async function doReply(id) {
+            const msg = prompt("請輸入匿名回覆：");
+            if (!msg) return;
+
             try {
-                // 將資料傳回機器人 (這行出錯代表 Web App 開啟方式不對)
-                tg.sendData("reply_" + postId);
-                tg.close();
-            } catch (e) {
-                alert("傳送失敗！\n請務必點擊對話框下方的「📖 開啟匿名串流牆」按鈕進入。");
-            }
+                const res = await fetch(`${API_BASE}/api/reply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ post_id: id, text: msg })
+                });
+                if (res.ok) {
+                    alert("回覆成功！");
+                    load(); // 重新整理列表
+                }
+            } catch (e) { alert("傳送失敗: " + e.message); }
         }
 
-        loadPosts();
+        load();
     </script>
 </body>
 </html>
