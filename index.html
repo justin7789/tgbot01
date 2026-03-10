@@ -55,7 +55,8 @@
                     </div>
                 `).join('');
             } catch (error) {
-                document.getElementById('status-message').innerHTML = "❌ 連線失敗<br>請手動點開 ngrok 網址解鎖";
+                // 這一行能讓我們看到到底是網址錯了、跨域被擋、還是語法報錯
+                document.getElementById('status-message').innerHTML = "報錯訊息: " + error.message;
             }
         }
 
