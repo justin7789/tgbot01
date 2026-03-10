@@ -8,8 +8,13 @@
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
         .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .post-id { font-size: 11px; color: #8e8e93; }
-        .post-text { font-size: 16px; margin: 10px 0; color: #1c1e21; white-space: pre-wrap; line-height: 1.5; }
+        
+        /* 🌟 新增的頭部排版：左右對齊 */
+        .post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .post-id { font-size: 12px; color: #8e8e93; font-weight: bold; }
+        .post-time { font-size: 11px; color: #a0a0a5; }
+        
+        .post-text { font-size: 16px; margin: 8px 0; color: #1c1e21; white-space: pre-wrap; line-height: 1.5; }
         .reply-item { background: #f8f9fa; padding: 6px 10px; border-radius: 8px; margin-top: 5px; font-size: 13px; color: #444; border-left: 3px solid #0088cc; }
         .btn { background: #0088cc; color: white; border: none; padding: 10px; border-radius: 20px; font-size: 14px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; }
     </style>
@@ -22,18 +27,14 @@
         tg.expand();
         tg.ready();
 
-        // ⚠️ 每次你的電腦重開 ngrok，只要來 GitHub 改這行就好
+        // ⚠️ 確認這裡是你的 ngrok 網址
         const API_URL = 'https://promycelial-fatima-monarchical.ngrok-free.dev';
 
         async function init() {
             try {
-                // 🌟 魔法標頭：讓 ngrok 自動放行 API 請求
                 const res = await fetch(`${API_URL}/api/posts?cache=${Date.now()}`, {
-                    headers: {
-                        "ngrok-skip-browser-warning": "true" 
-                    }
+                    headers: { "ngrok-skip-browser-warning": "true" }
                 });
-                
                 if (!res.ok) throw new Error("API 回應錯誤 " + res.status);
                 
                 const data = await res.json();
@@ -51,7 +52,10 @@
             }
             container.innerHTML = posts.slice().reverse().map(p => `
                 <div class="card">
-                    <div class="post-id">#${p.id}</div>
+                    <div class="post-header">
+                        <div class="post-id">#${p.id}</div>
+                        <div class="post-time">${p.timestamp ? p.timestamp : '早期貼文'}</div>
+                    </div>
                     <div class="post-text">${p.text}</div>
                     <div class="replies">${(p.replies || []).map(r => `<div class="reply-item">${r}</div>`).join('')}</div>
                     <button class="btn" onclick="askReply(${p.id})">回覆此內容</button>
@@ -64,7 +68,6 @@
             if (!val || val.trim() === "") return;
 
             try {
-                // 🌟 同樣加入魔法標頭
                 const res = await fetch(`${API_URL}/api/reply`, {
                     method: 'POST',
                     headers: { 
@@ -74,7 +77,7 @@
                     body: JSON.stringify({ post_id: id, text: val })
                 });
                 if (res.ok) {
-                    init(); // 重新載入列表
+                    init(); 
                 } else {
                     alert("發送失敗，請重試");
                 }
