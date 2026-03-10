@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; background: #f0f2f5; margin: 0; padding: 15px; }
+        .post-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .post-id { color: #888; font-size: 12px; margin-bottom: 5px; }
+        .post-content { font-size: 16px; line-height: 1.5; color: #1c1e21; }
+        .reply-btn { margin-top: 10px; background: #0088cc; color: white; border: none; padding: 5px 15px; border-radius: 20px; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div id="posts-container">載入中...</div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // 讓網頁全螢幕開啟
+
+        async function fetchPosts() {
+            try {
+                const response = await fetch('http://你的電腦IP:8000/api/posts');
+                const posts = await response.json();
+                const container = document.getElementById('posts-container');
+                container.innerHTML = posts.reverse().map((p, idx) => `
+                    <div class="post-card">
+                        <div class="post-id">#貼文 ${posts.length - 1 - idx}</div>
+                        <div class="post-content">${p.text}</div>
+                        <button class="reply-btn" onclick="sendReply(${posts.length - 1 - idx})">💬 回覆</button>
+                    </div>
+                `).join('');
+            } catch (e) { document.getElementById('posts-container').innerText = "連線失敗"; }
+        }
+
+        function sendReply(id) {
+            // 點擊回覆後，網頁會關閉並傳訊息給機器人
+            tg.sendData(`reply_${id}`);
+            tg.close();
+        }
+
+        fetchPosts();
+    </script>
+</body>
+</html>
