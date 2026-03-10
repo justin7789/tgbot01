@@ -1,45 +1,79 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>匿名串流牆</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; background: #f0f2f5; margin: 0; padding: 15px; }
-        .post-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .post-id { color: #888; font-size: 12px; margin-bottom: 5px; }
-        .post-content { font-size: 16px; line-height: 1.5; color: #1c1e21; }
-        .reply-btn { margin-top: 10px; background: #0088cc; color: white; border: none; padding: 5px 15px; border-radius: 20px; font-size: 13px; }
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
+        .header { text-align: center; font-weight: bold; padding: 10px 0; font-size: 1.2rem; color: #1c1e21; }
+        .post-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .post-id { font-size: 12px; color: #8e8e93; margin-bottom: 6px; }
+        .post-content { font-size: 16px; line-height: 1.4; color: #1c1e21; white-space: pre-wrap; }
+        .action-bar { margin-top: 12px; display: flex; }
+        .reply-btn { background: #0088cc; color: white; border: none; padding: 6px 14px; border-radius: 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        #status-message { text-align: center; color: #8e8e93; margin-top: 20px; font-size: 14px; }
     </style>
 </head>
 <body>
-    <div id="posts-container">載入中...</div>
+    <div class="header">匿名串流牆</div>
+    <div id="posts-container"></div>
+    <div id="status-message">載入中...</div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // 讓網頁全螢幕開啟
+        tg.expand(); // 讓 Web App 視窗最大化
+        tg.ready();
+
+        // ⚠️ 務必換成你最新的 ngrok 網址
+        const API_URL = 'https://promycelial-fatima-monarchical.ngrok-free.dev/api/posts';
 
         async function fetchPosts() {
             try {
-                const response = await fetch('https://promycelial-fatima-monarchical.ngrok-free.dev/api/posts');
+                const response = await fetch(API_URL);
+                
+                // 如果 ngrok 跳出警告頁面，這裡會抓到非 JSON 格式而報錯
+                if (!response.ok) throw new Error('網路回應不正常');
+                
                 const posts = await response.json();
-                const container = document.getElementById('posts-container');
-                container.innerHTML = posts.reverse().map((p, idx) => `
-                    <div class="post-card">
-                        <div class="post-id">#貼文 ${posts.length - 1 - idx}</div>
-                        <div class="post-content">${p.text}</div>
-                        <button class="reply-btn" onclick="sendReply(${posts.length - 1 - idx})">💬 回覆</button>
-                    </div>
-                `).join('');
-            } catch (e) { document.getElementById('posts-container').innerText = "連線失敗"; }
+                renderPosts(posts);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('status-message').innerHTML = 
+                    '❌ 連線失敗<br><small>請先點開 ngrok 網址按 Visit Site，並確認後端程式運作中</small>';
+            }
         }
 
-        function sendReply(id) {
-            // 點擊回覆後，網頁會關閉並傳訊息給機器人
-            tg.sendData(`reply_${id}`);
+        function renderPosts(posts) {
+            const container = document.getElementById('posts-container');
+            const status = document.getElementById('status-message');
+            
+            if (posts.length === 0) {
+                status.innerText = "目前還沒有貼文喔";
+                return;
+            }
+
+            status.style.display = 'none';
+            // reverse() 是為了讓最新貼文在最上面
+            container.innerHTML = posts.slice().reverse().map((p, index) => `
+                <div class="post-card">
+                    <div class="post-id">#${posts.length - 1 - index}</div>
+                    <div class="post-content">${p.text}</div>
+                    <div class="action-bar">
+                        <button class="reply-btn" onclick="sendReply(${posts.length - 1 - index})">💬 回覆</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function sendReply(postId) {
+            // 將回覆指令傳回給機器人，並自動關閉 Web App 視窗
+            tg.sendData(`reply_${postId}`);
             tg.close();
         }
 
+        // 執行抓取
         fetchPosts();
     </script>
 </body>
