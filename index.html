@@ -8,51 +8,74 @@
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
         .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .post-id { font-size: 11px; color: #888; }
-        .post-text { font-size: 16px; margin: 8px 0; }
-        .reply-item { font-size: 13px; color: #555; background: #f8f9fa; padding: 4px 8px; border-radius: 6px; margin-top: 4px; }
-        .btn { background: #0088cc; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; margin-top: 10px; }
+        .post-id { font-size: 11px; color: #8e8e93; margin-bottom: 4px; }
+        .post-text { font-size: 16px; line-height: 1.5; color: #1c1e21; white-space: pre-wrap; }
+        .reply-area { margin-top: 10px; border-top: 1px solid #f0f2f5; padding-top: 8px; }
+        .reply-item { background: #f8f9fa; padding: 5px 10px; border-radius: 8px; margin-bottom: 5px; font-size: 13px; color: #444; }
+        .reply-btn { background: #0088cc; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; margin-top: 10px; width: 100%; font-weight: bold; }
+        #loading { text-align: center; color: #999; margin-top: 50px; }
     </style>
 </head>
 <body>
-    <div id="list"></div>
+    <div id="posts-list"></div>
+    <div id="loading">讀取中...</div>
 
     <script>
-        const API_BASE = 'https://promycelial-fatima-monarchical.ngrok-free.dev'; // ⚠️ 檢查網址
+        // ⚠️ 確保這裡是你 ngrok 的最新網址
+        const API_BASE = 'https://promycelial-fatima-monarchical.ngrok-free.dev';
 
-        async function load() {
+        async function fetchPosts() {
             try {
                 const res = await fetch(`${API_BASE}/api/posts`);
                 const posts = await res.json();
-                document.getElementById('list').innerHTML = posts.slice().reverse().map(p => `
+                const container = document.getElementById('posts-list');
+                const loader = document.getElementById('loading');
+                
+                if (posts.length === 0) {
+                    loader.innerText = "牆上還沒有任何內容";
+                    return;
+                }
+
+                loader.style.display = 'none';
+                container.innerHTML = posts.slice().reverse().map(p => `
                     <div class="card">
                         <div class="post-id">#${p.id}</div>
                         <div class="post-text">${p.text}</div>
-                        <div class="replies">${(p.replies || []).map(r => `<div class="reply-item">💬 ${r}</div>`).join('')}</div>
-                        <button class="btn" onclick="doReply(${p.id})">回覆</button>
+                        <div class="reply-area">
+                            ${(p.replies || []).map(r => `<div class="reply-item">💬 ${r}</div>`).join('')}
+                        </div>
+                        <button class="reply-btn" onclick="submitReply(${p.id})">回覆此貼文</button>
                     </div>
                 `).join('');
-            } catch (e) { alert("讀取失敗: " + e.message); }
+            } catch (err) {
+                document.getElementById('loading').innerText = "連線失敗: " + err.message;
+            }
         }
 
-        async function doReply(id) {
-            const msg = prompt("請輸入匿名回覆：");
-            if (!msg) return;
+        async function submitReply(postId) {
+            // 使用瀏覽器內建 prompt，避開 Telegram Pattern 限制
+            const userMsg = prompt("請輸入您的匿名回覆：");
+            if (!userMsg || userMsg.trim() === "") return;
 
             try {
                 const res = await fetch(`${API_BASE}/api/reply`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ post_id: id, text: msg })
+                    body: JSON.stringify({ post_id: postId, text: userMsg })
                 });
+                
                 if (res.ok) {
-                    alert("回覆成功！");
-                    load(); // 重新整理列表
+                    alert("回覆已送出！");
+                    fetchPosts(); // 重新整理
+                } else {
+                    alert("發送失敗，伺服器無回應。");
                 }
-            } catch (e) { alert("傳送失敗: " + e.message); }
+            } catch (err) {
+                alert("網路錯誤: " + err.message);
+            }
         }
 
-        load();
+        fetchPosts();
     </script>
 </body>
 </html>
