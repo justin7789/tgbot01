@@ -3,66 +3,73 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>即時匿名牆</title>
+    <title>匿名牆 v2.1</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
         .post-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .post-id { font-size: 12px; color: #8e8e93; margin-bottom: 6px; }
-        .post-content { font-size: 16px; line-height: 1.4; color: #1c1e21; white-space: pre-wrap; }
-        .reply-section { margin-top: 10px; padding-top: 8px; border-top: 1px solid #f0f0f0; }
-        .reply-item { font-size: 13px; color: #555; background: #f8f9fa; padding: 4px 8px; border-radius: 6px; margin-bottom: 4px; }
-        .reply-btn { background: #0088cc; color: white; border: none; padding: 6px 14px; border-radius: 18px; font-size: 13px; cursor: pointer; margin-top: 8px; }
+        .post-id { font-size: 11px; color: #8e8e93; margin-bottom: 4px; }
+        .post-content { font-size: 16px; line-height: 1.5; color: #1c1e21; white-space: pre-wrap; }
+        .reply-box { margin-top: 10px; border-top: 1px solid #f0f2f5; padding-top: 8px; font-size: 13px; color: #555; }
+        .reply-btn { margin-top: 12px; background: #0088cc; color: white; border: none; padding: 7px 15px; border-radius: 20px; font-size: 13px; cursor: pointer; }
+        #status { text-align: center; color: #999; font-size: 14px; margin-top: 50px; }
     </style>
 </head>
 <body>
     <div id="posts-container"></div>
-    <div id="status-message" style="text-align: center; color: #8e8e93; margin-top: 20px;">載入中...</div>
+    <div id="status">正在同步串流資料...</div>
 
     <script>
         const tg = window.Telegram.WebApp;
+        tg.ready();
         tg.expand();
 
-        // ⚠️ 確保這串網址與你截圖中瀏覽器列的一模一樣
+        // ⚠️ 這裡必須是你當前 ngrok 顯示的最新 https 網址
         const API_URL = 'https://promycelial-fatima-monarchical.ngrok-free.dev/api/posts';
 
         async function loadPosts() {
             try {
                 const response = await fetch(API_URL);
-                if (!response.ok) throw new Error('Network error');
+                if (!response.ok) throw new Error("API 回應異常: " + response.status);
+                
                 const posts = await response.json();
-                
                 const container = document.getElementById('posts-container');
-                const status = document.getElementById('status-message');
-                
+                const status = document.getElementById('status');
+
                 if (posts.length === 0) {
-                    status.innerText = "目前還沒有貼文";
+                    status.innerText = "目前牆上空空如也...";
                     return;
                 }
 
                 status.style.display = 'none';
-                // 照你的 JSON 格式渲染：text, id, replies
                 container.innerHTML = posts.slice().reverse().map(p => `
                     <div class="post-card">
                         <div class="post-id">#${p.id}</div>
                         <div class="post-content">${p.text}</div>
                         ${p.replies && p.replies.length > 0 ? `
-                            <div class="reply-section">
-                                ${p.replies.map(r => `<div class="reply-item">💬 ${r}</div>`).join('')}
+                            <div class="reply-box">
+                                ${p.replies.map(r => `<div>💬 ${r}</div>`).join('')}
                             </div>
                         ` : ''}
-                        <button class="reply-btn" onclick="sendReply(${p.id})">回覆</button>
+                        <button class="reply-btn" onclick="sendReply(${p.id})">💬 匿名回覆</button>
                     </div>
                 `).join('');
-            } catch (error) {
-                // 這一行能讓我們看到到底是網址錯了、跨域被擋、還是語法報錯
-                document.getElementById('status-message').innerHTML = "報錯訊息: " + error.message;
+
+            } catch (err) {
+                document.getElementById('status').innerHTML = 
+                    "❌ 連線失敗<br><small>" + err.message + "</small><br><br>" +
+                    "<button onclick='location.reload()' style='padding:5px 10px;'>重試</button>";
             }
         }
 
         function sendReply(postId) {
-            tg.sendData(`reply_${postId}`);
-            tg.close();
+            try {
+                // 只有從機器人按鈕開啟的 Web App 才能執行這行
+                tg.sendData("reply_" + postId);
+                tg.close();
+            } catch (e) {
+                alert("傳送指令失敗，請確認您是點擊機器人下方的按鈕開啟此頁面。");
+            }
         }
 
         loadPosts();
