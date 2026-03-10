@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>匿名牆 v2.1</title>
+    <title>即時匿名牆</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
@@ -11,7 +11,8 @@
         .post-id { font-size: 11px; color: #8e8e93; margin-bottom: 4px; }
         .post-content { font-size: 16px; line-height: 1.5; color: #1c1e21; white-space: pre-wrap; }
         .reply-box { margin-top: 10px; border-top: 1px solid #f0f2f5; padding-top: 8px; font-size: 13px; color: #555; }
-        .reply-btn { margin-top: 12px; background: #0088cc; color: white; border: none; padding: 7px 15px; border-radius: 20px; font-size: 13px; cursor: pointer; }
+        .reply-item { background: #f8f9fa; padding: 4px 8px; border-radius: 6px; margin-bottom: 4px; }
+        .reply-btn { margin-top: 12px; background: #0088cc; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; font-weight: bold; }
         #status { text-align: center; color: #999; font-size: 14px; margin-top: 50px; }
     </style>
 </head>
@@ -24,13 +25,13 @@
         tg.ready();
         tg.expand();
 
-        // ⚠️ 這裡必須是你當前 ngrok 顯示的最新 https 網址
+        // ⚠️ 務必換成你最新的 ngrok 網址
         const API_URL = 'https://promycelial-fatima-monarchical.ngrok-free.dev/api/posts';
 
         async function loadPosts() {
             try {
                 const response = await fetch(API_URL);
-                if (!response.ok) throw new Error("API 回應異常: " + response.status);
+                if (!response.ok) throw new Error("連線異常: " + response.status);
                 
                 const posts = await response.json();
                 const container = document.getElementById('posts-container');
@@ -42,33 +43,34 @@
                 }
 
                 status.style.display = 'none';
+                // 照你的 JSON 欄位渲染 (id, text, replies)
                 container.innerHTML = posts.slice().reverse().map(p => `
                     <div class="post-card">
                         <div class="post-id">#${p.id}</div>
                         <div class="post-content">${p.text}</div>
                         ${p.replies && p.replies.length > 0 ? `
                             <div class="reply-box">
-                                ${p.replies.map(r => `<div>💬 ${r}</div>`).join('')}
+                                ${p.replies.map(r => `<div class="reply-item">💬 ${r}</div>`).join('')}
                             </div>
                         ` : ''}
-                        <button class="reply-btn" onclick="sendReply(${p.id})">💬 匿名回覆</button>
+                        <button class="reply-btn" onclick="sendReply(${p.id})">回覆此貼文</button>
                     </div>
                 `).join('');
 
             } catch (err) {
                 document.getElementById('status').innerHTML = 
-                    "❌ 連線失敗<br><small>" + err.message + "</small><br><br>" +
-                    "<button onclick='location.reload()' style='padding:5px 10px;'>重試</button>";
+                    "❌ 讀取失敗<br><small>請確認 ngrok 視窗是否開啟</small><br><br>" +
+                    "<button onclick='location.reload()'>重試</button>";
             }
         }
 
         function sendReply(postId) {
             try {
-                // 只有從機器人按鈕開啟的 Web App 才能執行這行
+                // 將資料傳回機器人 (這行出錯代表 Web App 開啟方式不對)
                 tg.sendData("reply_" + postId);
                 tg.close();
             } catch (e) {
-                alert("傳送指令失敗，請確認您是點擊機器人下方的按鈕開啟此頁面。");
+                alert("傳送失敗！\n請務必點擊對話框下方的「📖 開啟匿名串流牆」按鈕進入。");
             }
         }
 
