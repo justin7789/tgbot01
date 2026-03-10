@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>匿名牆 v4.0</title>
+    <title>匿名串流牆 App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
@@ -20,18 +20,26 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
+        tg.ready();
 
-        // ⚠️ 每次開啟務必檢查 ngrok 網址是否變動
+        // ⚠️ 每次你的電腦重開 ngrok，只要來 GitHub 改這行就好
         const API_URL = 'https://promycelial-fatima-monarchical.ngrok-free.dev';
 
         async function init() {
             try {
-                // 加上隨機數避開 API 緩存
-                const res = await fetch(`${API_URL}/api/posts?cache=${Date.now()}`);
+                // 🌟 魔法標頭：讓 ngrok 自動放行 API 請求
+                const res = await fetch(`${API_URL}/api/posts?cache=${Date.now()}`, {
+                    headers: {
+                        "ngrok-skip-browser-warning": "true" 
+                    }
+                });
+                
+                if (!res.ok) throw new Error("API 回應錯誤 " + res.status);
+                
                 const data = await res.json();
                 render(data);
             } catch (err) {
-                document.getElementById('content').innerHTML = `❌ 連線失敗: ${err.message}<br><small>請確認 ngrok 是否運行中</small>`;
+                document.getElementById('content').innerHTML = `❌ 連線失敗<br><small>${err.message}</small>`;
             }
         }
 
@@ -56,17 +64,22 @@
             if (!val || val.trim() === "") return;
 
             try {
-                const res = await fetch(`${API_BASE}/api/reply`, {
+                // 🌟 同樣加入魔法標頭
+                const res = await fetch(`${API_URL}/api/reply`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
                     body: JSON.stringify({ post_id: id, text: val })
                 });
                 if (res.ok) {
-                    alert("發送成功！");
-                    init(); // 重新載入
+                    init(); // 重新載入列表
+                } else {
+                    alert("發送失敗，請重試");
                 }
             } catch (e) {
-                alert("發送失敗，請重試");
+                alert("發送失敗: " + e.message);
             }
         }
 
